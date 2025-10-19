@@ -1,0 +1,5 @@
+{
+  "name": "AI News Platform",
+  "description": "A modern, full-featured AI News Platform that fetches the latest news using a public API and provides AI-powered summaries with Gemini. Users can search, filter by category, and view trending articles.",
+  "requestFramePermissions": []
+}
