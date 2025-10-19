@@ -1,3 +1,16 @@
+export interface NewsApiLiteArticle {
+  id: string;
+  title: string;
+  url: string;
+  image: string;
+  description: string;
+  author: string;
+  source_country: string;
+  language: string;
+  published_at: string;
+}
+
+export type NewsApiLiteResponse = NewsApiLiteArticle[];
 
 export interface Article {
   source: {
@@ -11,12 +24,4 @@ export interface Article {
   urlToImage: string | null;
   publishedAt: string;
   content: string | null;
-}
-
-export interface NewsApiResponse {
-  status: string;
-  totalResults: number;
-  articles: Article[];
-  code?: string;
-  message?: string;
 }

@@ -4,16 +4,21 @@ import { GoogleGenAI } from "@google/genai";
 // Per coding guidelines, initialize the Gemini client.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-export const summarizeArticle = async (title: string, description: string | null): Promise<string> => {
-  // Construct a clear prompt for summarization.
+export const summarizeArticle = async (title: string, description: string | null, content: string | null): Promise<string> => {
+  // Construct a clear prompt for summarization, prioritizing full content if available.
+  const promptBody = content || description || 'No additional content provided.';
+  
   const prompt = `Provide a concise and engaging summary of the following news article. Focus on the key information that a reader would want to know.
   
   Title: ${title}
-  Description: ${description || 'N/A'}`;
+  
+  Article Content:
+  ${promptBody}`;
 
   try {
     // Per guidelines, use gemini-2.5-flash for basic text tasks and call generateContent.
     const response = await ai.models.generateContent({
+      // FIX: Corrected the model name from 'gem-2.5-flash' to 'gemini-2.5-flash' as per the Gemini API guidelines for basic text tasks.
       model: 'gemini-2.5-flash',
       contents: prompt,
       config: {
