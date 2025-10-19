@@ -1,103 +1,71 @@
-import type { Article } from '../types';
-import { mockArticles, mockTrendingArticles } from './mockData';
+import type { Article, WorldNewsApiResponse, WorldNewsApiArticle } from '../types';
+
+const WORLDNEWSAPI_KEY = '4fcf42ce62e848768c7baacf04562f6b';
+const API_URL = 'https://api.worldnewsapi.com';
 
 
-// --- MOCK DATA IMPLEMENTATION ---
-// This is active to prevent app crashes due to API rate limits.
-// The app is fully functional with this mock data.
-
-/**
- * Simulates fetching general news articles.
- * @param _query - The search term or category (ignored for mock data).
- * @returns A promise that resolves to an array of mock articles after a short delay.
- */
-export const getNews = async (_query: string): Promise<Article[]> => {
-  console.log("Using mock data for general news.");
-  return new Promise(resolve => {
-    setTimeout(() => {
-      resolve(mockArticles);
-    }, 500);
-  });
-};
-
-/**
- * Simulates fetching trending news articles.
- * @returns A promise that resolves to an array of mock trending articles after a short delay.
- */
-export const getTrendingNews = async (): Promise<Article[]> => {
-  console.log("Using mock data for trending news.");
-  return new Promise(resolve => {
-    setTimeout(() => {
-      resolve(mockTrendingArticles);
-    }, 500);
-  });
+const getSourceNameFromUrl = (url: string): string => {
+  try {
+    const hostname = new URL(url).hostname;
+    const parts = hostname.replace(/^www\./, '').split('.');
+    if (parts.length > 1) {
+      const name = parts[0];
+      return name.charAt(0).toUpperCase() + name.slice(1);
+    }
+    return hostname;
+  } catch (error) {
+    return 'Unknown Source';
+  }
 };
 
 
-// --- LIVE API IMPLEMENTATION (Currently commented out) ---
-// To use this, you will need a valid, active RapidAPI key that has not exceeded its quota.
-// 1. Uncomment the code below.
-// 2. Replace the placeholder with your new key.
-// 3. Comment out the "MOCK DATA IMPLEMENTATION" section above.
-/*
-import type { Article, NewsApiLiteArticle, NewsApiLiteResponse } from '../types';
-
-// TODO: Replace with your valid RapidAPI Key.
-const RAPIDAPI_KEY = 'YOUR_RAPIDAPI_KEY_HERE'; 
-const API_HOST = 'news-api-lite.p.rapidapi.com';
-// FIX: Corrected the API URL. The path is at the root, not '/news-api-lite'.
-const API_URL = `https://${API_HOST}`;
-
-const mapToArticle = (apiArticle: NewsApiLiteArticle): Article => {
+const mapWorldNewsToArticle = (apiArticle: WorldNewsApiArticle): Article => {
   return {
     source: {
-      id: apiArticle.id,
-      name: apiArticle.source_country || 'Unknown Source',
+      id: apiArticle.id.toString(),
+      name: getSourceNameFromUrl(apiArticle.url),
     },
-    author: apiArticle.author || null,
+    author: (apiArticle.authors || []).join(', ') || null,
     title: apiArticle.title,
-    description: apiArticle.description,
+    description: apiArticle.text,
     url: apiArticle.url,
     urlToImage: apiArticle.image,
-    publishedAt: apiArticle.published_at,
-    content: null,
+    publishedAt: apiArticle.publish_date,
+    content: apiArticle.text,
   };
 };
 
-const fetchFromApi = async (query: string): Promise<Article[]> => {
-    if (!RAPIDAPI_KEY || RAPIDAPI_KEY === 'YOUR_RAPIDAPI_KEY_HERE') {
-        throw new Error("Missing API Key: Please add your RapidAPI Key to services/newsService.ts.");
-    }
+const fetchNewsFromApi = async (endpoint: string, queryParams: string): Promise<Article[]> => {
+  const url = `${API_URL}${endpoint}?api-key=${WORLDNEWSAPI_KEY}&${queryParams}`;
 
-    const url = `${API_URL}?q=${encodeURIComponent(query)}`;
-    const options = {
-        method: 'GET',
-        headers: {
-            'X-RapidAPI-Key': RAPIDAPI_KEY,
-            'X-RapidAPI-Host': API_HOST,
-        }
-    };
-
-    try {
-        const response = await fetch(url, options);
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error("API Error Response:", errorText);
-            throw new Error(`API request failed with status ${response.status}. See console for details.`);
-        }
-        const data: NewsApiLiteResponse = await response.json();
-        return data.map(mapToArticle);
-    } catch (error) {
-        console.error("Error fetching news from API:", error);
-        throw error;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Could not parse error response.' }));
+      console.error("API Error Response:", errorData);
+      throw new Error(`API request failed with status ${response.status}: ${errorData?.message || 'Unknown error'}`);
     }
+    const data: WorldNewsApiResponse = await response.json();
+    return data.news
+      .filter(article => article.image && article.title && article.text)
+      .map(mapWorldNewsToArticle);
+  } catch (error) {
+    console.error("Error fetching news from API:", error);
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Failed to fetch news. This might be due to a network issue or CORS policy. Please try again later.');
+    }
+    throw error;
+  }
 };
 
 export const getNews = async (query: string): Promise<Article[]> => {
-  return fetchFromApi(query);
+  console.log(`Fetching live news for query: "${query}"`);
+  const params = `text=${encodeURIComponent(query)}&language=en&number=20`;
+  return fetchNewsFromApi('/search-news', params);
 };
 
 export const getTrendingNews = async (): Promise<Article[]> => {
-  return fetchFromApi('AI Technology');
+  console.log('Fetching live trending news...');
+  const params = `text=technology&language=en&sort=publish-time&sort-direction=DESC&number=10`;
+  return fetchNewsFromApi('/search-news', params);
 };
-*/

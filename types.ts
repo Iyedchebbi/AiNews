@@ -1,17 +1,4 @@
-export interface NewsApiLiteArticle {
-  id: string;
-  title: string;
-  url: string;
-  image: string;
-  description: string;
-  author: string;
-  source_country: string;
-  language: string;
-  published_at: string;
-}
-
-export type NewsApiLiteResponse = NewsApiLiteArticle[];
-
+// Internal application Article type.
 export interface Article {
   source: {
     id: string | null;
@@ -24,4 +11,20 @@ export interface Article {
   urlToImage: string | null;
   publishedAt: string;
   content: string | null;
+}
+
+// Type for the raw response from worldnewsapi.com
+export interface WorldNewsApiResponse {
+  news: WorldNewsApiArticle[];
+}
+
+// Type for a single article from worldnewsapi.com
+export interface WorldNewsApiArticle {
+  id: number;
+  title: string;
+  text: string;
+  url: string;
+  image: string;
+  publish_date: string;
+  authors: string[];
 }

@@ -16,22 +16,37 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>(CATEGORIES[0]);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
+  // Effect for the initial sequential data load to avoid rate-limiting.
   useEffect(() => {
-    const fetchTrending = async () => {
+    const fetchInitialData = async () => {
       try {
-        setTrendingLoading(true);
-        const fetchedArticles = await getTrendingNews();
-        setTrendingArticles(fetchedArticles);
         setError(null);
+        setTrendingLoading(true);
+        setLoading(true);
+
+        // 1. Fetch trending news first
+        const trending = await getTrendingNews();
+        setTrendingArticles(trending);
+        setTrendingLoading(false);
+
+        // 2. Then fetch the main articles for the default category
+        const mainArticles = await getNews(activeCategory);
+        setArticles(mainArticles);
+        setLoading(false);
+
       } catch (err) {
         setError((err as Error).message);
-      } finally {
         setTrendingLoading(false);
+        setLoading(false);
+      } finally {
+        setInitialLoadDone(true); // Signal that the initial load is complete
       }
     };
-    fetchTrending();
-  }, []);
+    
+    fetchInitialData();
+  }, []); // Intentionally empty dependency array to run only once on mount
 
   const fetchArticles = useCallback(async (category: string, search: string) => {
     try {
@@ -39,29 +54,21 @@ const App: React.FC = () => {
       setError(null);
       const query = search || category;
       const fetchedArticles = await getNews(query);
-      
-      if (search) {
-        // Simple client-side search simulation
-        const filtered = fetchedArticles.filter(article => 
-          article.title.toLowerCase().includes(search.toLowerCase()) ||
-          (article.description && article.description.toLowerCase().includes(search.toLowerCase()))
-        );
-        setArticles(filtered);
-      } else {
-        setArticles(fetchedArticles);
-      }
-
-    } catch (err)
- {
+      setArticles(fetchedArticles);
+    } catch (err) {
       setError((err as Error).message);
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // Effect for handling subsequent updates from user interaction (search/category change).
   useEffect(() => {
+    if (!initialLoadDone) {
+      return; // Don't run this effect until the initial load is complete
+    }
     fetchArticles(activeCategory, searchTerm);
-  }, [activeCategory, searchTerm, fetchArticles]);
+  }, [activeCategory, searchTerm, fetchArticles, initialLoadDone]);
 
   const handleCategoryChange = useCallback((category: string) => {
     setActiveCategory(category);

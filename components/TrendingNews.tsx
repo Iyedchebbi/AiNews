@@ -17,6 +17,9 @@ const TrendingSkeleton: React.FC = () => (
     </div>
 );
 
+const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    e.currentTarget.style.display = 'none'; // Hide broken images
+};
 
 export const TrendingNews: React.FC<TrendingNewsProps> = ({ articles, loading }) => {
     return (
@@ -27,14 +30,21 @@ export const TrendingNews: React.FC<TrendingNewsProps> = ({ articles, loading })
                     Array.from({ length: 5 }).map((_, index) => <TrendingSkeleton key={index} />)
                 ) : (
                     articles.map(article => (
-                        <div key={article.url} className="flex-shrink-0 w-80 mr-6 bg-white dark:bg-slate-800 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
+                        <div key={article.url} className="flex-shrink-0 w-80 mr-6 bg-white dark:bg-slate-800 rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 group">
                             <a href={article.url} target="_blank" rel="noopener noreferrer">
                                 {article.urlToImage && (
-                                    <img className="w-full h-32 object-cover" src={article.urlToImage} alt={article.title} />
+                                    <div className="overflow-hidden">
+                                        <img 
+                                            className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300" 
+                                            src={article.urlToImage} 
+                                            alt={article.title}
+                                            onError={handleImageError}
+                                        />
+                                    </div>
                                 )}
                                 <div className="p-3">
                                     <p className="text-xs text-slate-500 dark:text-slate-400">{article.source.name}</p>
-                                    <h3 className="text-md font-semibold mt-1 text-slate-800 dark:text-slate-100 leading-tight line-clamp-2">{article.title}</h3>
+                                    <h3 className="text-md font-semibold mt-1 text-slate-800 dark:text-slate-100 leading-tight line-clamp-2 hover:text-cyan-500 transition-colors">{article.title}</h3>
                                 </div>
                             </a>
                         </div>
