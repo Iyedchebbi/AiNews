@@ -67,6 +67,10 @@ const App: React.FC = () => {
     if (!initialLoadDone) {
       return; // Don't run this effect until the initial load is complete
     }
+    // Avoid fetching if both category and search are empty, which can happen during state transitions.
+    if (!activeCategory && !searchTerm) {
+        return;
+    }
     fetchArticles(activeCategory, searchTerm);
   }, [activeCategory, searchTerm, fetchArticles, initialLoadDone]);
 
@@ -76,8 +80,14 @@ const App: React.FC = () => {
   }, []);
 
   const handleSearch = useCallback((term: string) => {
-    setSearchTerm(term);
-    setActiveCategory('');
+    if (term) {
+      setSearchTerm(term);
+      setActiveCategory('');
+    } else {
+      // If search is cleared, revert to the default category view.
+      setSearchTerm('');
+      setActiveCategory(CATEGORIES[0]);
+    }
   }, []);
 
   return (

@@ -59,8 +59,21 @@ const fetchNewsFromApi = async (endpoint: string, queryParams: string): Promise<
 };
 
 export const getNews = async (query: string): Promise<Article[]> => {
-  console.log(`Fetching live news for query: "${query}"`);
-  const params = `text=${encodeURIComponent(query)}&language=en&number=20`;
+  const trimmedQuery = query.trim();
+
+  // The API requires the text parameter to be at least 3 characters.
+  // We check this here to prevent a 400 Bad Request error.
+  if (trimmedQuery.length > 0 && trimmedQuery.length < 3) {
+    throw new Error("Search term must be at least 3 characters long.");
+  }
+
+  // If the query is empty after trimming, there's nothing to search.
+  if (!trimmedQuery) {
+    return [];
+  }
+  
+  console.log(`Fetching live news for query: "${trimmedQuery}"`);
+  const params = `text=${encodeURIComponent(trimmedQuery)}&language=en&number=20`;
   return fetchNewsFromApi('/search-news', params);
 };
 
