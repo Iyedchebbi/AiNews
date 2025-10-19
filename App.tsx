@@ -5,7 +5,9 @@ import { TrendingNews } from './components/TrendingNews';
 import { Newsletter } from './components/Newsletter';
 import { Footer } from './components/Footer';
 import { getNews, getTrendingNews } from './services/newsService';
-import { CATEGORIES } from './constants';
+import { CATEGORIES, CATEGORY_KEYS } from './constants';
+import { useLanguage } from './hooks/useLanguage';
+import { translations } from './translations';
 import type { Article } from './types';
 
 const App: React.FC = () => {
@@ -14,9 +16,12 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [trendingLoading, setTrendingLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeCategory, setActiveCategory] = useState<string>(CATEGORIES[0]);
+  const [activeCategoryKey, setActiveCategoryKey] = useState<string>(CATEGORY_KEYS[0]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [initialLoadDone, setInitialLoadDone] = useState(false);
+  const { lang } = useLanguage();
+
+  const translatedCategories = CATEGORY_KEYS.map(key => CATEGORIES[key][lang]);
 
   // Effect for the initial sequential data load to avoid rate-limiting.
   useEffect(() => {
@@ -26,13 +31,12 @@ const App: React.FC = () => {
         setTrendingLoading(true);
         setLoading(true);
 
-        // 1. Fetch trending news first
         const trending = await getTrendingNews();
         setTrendingArticles(trending);
         setTrendingLoading(false);
 
-        // 2. Then fetch the main articles for the default category
-        const mainArticles = await getNews(activeCategory);
+        const defaultCategory = CATEGORIES[CATEGORY_KEYS[0]].en; // Always fetch default with English term
+        const mainArticles = await getNews(defaultCategory);
         setArticles(mainArticles);
         setLoading(false);
 
@@ -41,19 +45,20 @@ const App: React.FC = () => {
         setTrendingLoading(false);
         setLoading(false);
       } finally {
-        setInitialLoadDone(true); // Signal that the initial load is complete
+        setInitialLoadDone(true);
       }
     };
     
     fetchInitialData();
-  }, []); // Intentionally empty dependency array to run only once on mount
+  }, []);
 
-  const fetchArticles = useCallback(async (category: string, search: string) => {
+  const fetchArticles = useCallback(async (categoryKey: string, search: string) => {
     try {
       setLoading(true);
       setError(null);
-      const query = search || category;
-      const fetchedArticles = await getNews(query);
+      // Use the English term for API queries to ensure consistency
+      const apiQuery = search || CATEGORIES[categoryKey]?.en || CATEGORIES[CATEGORY_KEYS[0]].en;
+      const fetchedArticles = await getNews(apiQuery);
       setArticles(fetchedArticles);
     } catch (err) {
       setError((err as Error).message);
@@ -62,38 +67,42 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Effect for handling subsequent updates from user interaction (search/category change).
   useEffect(() => {
-    if (!initialLoadDone) {
-      return; // Don't run this effect until the initial load is complete
-    }
-    // Avoid fetching if both category and search are empty, which can happen during state transitions.
-    if (!activeCategory && !searchTerm) {
-        return;
-    }
-    fetchArticles(activeCategory, searchTerm);
-  }, [activeCategory, searchTerm, fetchArticles, initialLoadDone]);
+    if (!initialLoadDone) return;
+    if (!activeCategoryKey && !searchTerm) return;
+    
+    fetchArticles(activeCategoryKey, searchTerm);
+  }, [activeCategoryKey, searchTerm, fetchArticles, initialLoadDone]);
 
-  const handleCategoryChange = useCallback((category: string) => {
-    setActiveCategory(category);
+  const handleCategoryChange = useCallback((categoryKey: string) => {
+    setActiveCategoryKey(categoryKey);
     setSearchTerm('');
   }, []);
 
   const handleSearch = useCallback((term: string) => {
     if (term) {
       setSearchTerm(term);
-      setActiveCategory('');
+      setActiveCategoryKey('');
     } else {
-      // If search is cleared, revert to the default category view.
       setSearchTerm('');
-      setActiveCategory(CATEGORIES[0]);
+      setActiveCategoryKey(CATEGORY_KEYS[0]);
     }
   }, []);
+
+  const getHeadline = () => {
+    if (searchTerm) {
+      return `${translations.resultsFor[lang]} "${searchTerm}"`;
+    }
+    if (activeCategoryKey) {
+      return `${CATEGORIES[activeCategoryKey][lang]} ${translations.news[lang]}`;
+    }
+    return `AI News Nexus`;
+  }
 
   return (
     <div className="min-h-screen flex flex-col font-sans">
       <Header
-        activeCategory={activeCategory}
+        activeCategoryKey={activeCategoryKey}
         onCategoryChange={handleCategoryChange}
         onSearch={handleSearch}
         currentSearchTerm={searchTerm}
@@ -101,8 +110,8 @@ const App: React.FC = () => {
       <main className="flex-grow container mx-auto px-4 py-8">
         <TrendingNews articles={trendingArticles} loading={trendingLoading} />
         <div className="mt-12">
-            <h2 className="text-3xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-blue-600">
-                {searchTerm ? `Results for "${searchTerm}"` : `${activeCategory} News`}
+            <h2 className="text-3xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-purple-600">
+                {getHeadline()}
             </h2>
             <NewsList articles={articles} loading={loading} error={error} />
         </div>

@@ -1,4 +1,14 @@
-import type { Article, WorldNewsApiResponse, WorldNewsApiArticle } from '../types';
+import type { Article } from '../types';
+import { mockArticles, mockTrendingArticles } from './mockData';
+
+// --- Live API Code (Commented Out Due to API Limits) ---
+// The World News API free plan has a very low daily limit (50 points), which
+// is quickly exhausted by the app's initial requests, leading to the "402 Payment
+// Required" error you are seeing. To ensure the app remains functional for
+// development and demonstration, we are using a reliable mock data service below.
+// If you upgrade to a paid API key, you can uncomment this section.
+/*
+import type { WorldNewsApiResponse, WorldNewsApiArticle } from '../types';
 
 const WORLDNEWSAPI_KEY = '4fcf42ce62e848768c7baacf04562f6b';
 const API_URL = 'https://api.worldnewsapi.com';
@@ -57,28 +67,43 @@ const fetchNewsFromApi = async (endpoint: string, queryParams: string): Promise<
     throw error;
   }
 };
+*/
+
+// --- Mock Data Implementation ---
+// This provides a stable and error-free experience.
+
+const filterMockArticles = (query: string): Article[] => {
+    const lowercasedQuery = query.toLowerCase().trim();
+    if (!lowercasedQuery) return mockArticles;
+
+    // Simulate filtering for a more realistic search experience
+    return mockArticles.filter(article =>
+        article.title.toLowerCase().includes(lowercasedQuery) ||
+        (article.description && article.description.toLowerCase().includes(lowercasedQuery)) ||
+        article.source.name.toLowerCase().includes(lowercasedQuery)
+    );
+};
+
 
 export const getNews = async (query: string): Promise<Article[]> => {
+  console.log(`Using mock data for query: "${query}"`);
+  
   const trimmedQuery = query.trim();
-
-  // The API requires the text parameter to be at least 3 characters.
-  // We check this here to prevent a 400 Bad Request error.
   if (trimmedQuery.length > 0 && trimmedQuery.length < 3) {
     throw new Error("Search term must be at least 3 characters long.");
   }
-
-  // If the query is empty after trimming, there's nothing to search.
-  if (!trimmedQuery) {
-    return [];
-  }
   
-  console.log(`Fetching live news for query: "${trimmedQuery}"`);
-  const params = `text=${encodeURIComponent(trimmedQuery)}&language=en&number=20`;
-  return fetchNewsFromApi('/search-news', params);
+  // Simulate network delay for a realistic loading experience
+  await new Promise(resolve => setTimeout(resolve, 400));
+  
+  return Promise.resolve(filterMockArticles(query));
 };
 
 export const getTrendingNews = async (): Promise<Article[]> => {
-  console.log('Fetching live trending news...');
-  const params = `text=technology&language=en&sort=publish-time&sort-direction=DESC&number=10`;
-  return fetchNewsFromApi('/search-news', params);
+  console.log('Using mock data for trending news...');
+  
+  // Simulate network delay
+  await new Promise(resolve => setTimeout(resolve, 300));
+  
+  return Promise.resolve(mockTrendingArticles);
 };
