@@ -1,10 +1,17 @@
 // Implemented Gemini API call to generate real article summaries.
 import { GoogleGenAI } from "@google/genai";
 
-// Per coding guidelines, initialize the Gemini client.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export const summarizeArticle = async (title: string, description: string | null, content: string | null): Promise<string> => {
+  // Per the coding guidelines, the API key must be from process.env.API_KEY.
+  // We check for its existence here to prevent the app from crashing on load
+  // and provide a clear error message to the user when the feature is used.
+  if (!process.env.API_KEY) {
+    throw new Error("AI Summary is unavailable: API Key has not been configured.");
+  }
+  
+  // Initialize the Gemini client only when the function is called and the key exists.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
   // Construct a clear prompt for summarization, prioritizing full content if available.
   const promptBody = content || description || 'No additional content provided.';
   
@@ -18,7 +25,6 @@ export const summarizeArticle = async (title: string, description: string | null
   try {
     // Per guidelines, use gemini-2.5-flash for basic text tasks and call generateContent.
     const response = await ai.models.generateContent({
-      // FIX: Corrected the model name from 'gem-2.5-flash' to 'gemini-2.5-flash' as per the Gemini API guidelines for basic text tasks.
       model: 'gemini-2.5-flash',
       contents: prompt,
       config: {
